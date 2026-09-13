@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Loader2, Github, Sparkles, FileText, MessageSquare, ChevronDown, ChevronUp } from "lucide-react";
 
 export default function Home() {
@@ -94,15 +95,36 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-[#0a0a0a] text-zinc-300 py-12 px-4 font-sans selection:bg-purple-500/30">
+    <main className="min-h-screen bg-[#0a0a0a] text-zinc-300 font-sans selection:bg-purple-500/30">
 
-      {/* Header */}
-      <div className="max-w-4xl mx-auto flex flex-col items-center text-center space-y-4 mb-12">
-        <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20">
-          <Github className="w-6 h-6 text-white" />
+      {/* Top Navigation */}
+      <nav className="w-full flex justify-between items-center px-6 py-6 max-w-6xl mx-auto">
+        <div className="flex items-center gap-2">
+          <Github className="w-6 h-6 text-purple-500" />
+          <span className="text-lg font-bold text-white tracking-tight">GitSimple</span>
         </div>
-        <h1 className="text-3xl font-bold tracking-tight text-white">GitSimple</h1>
-        <p className="text-zinc-400">Paste a GitHub Repo URL to understand its commits simply.</p>
+        <div className="flex items-center gap-4">
+          <Link href="/login" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors px-4 py-2">
+            Log in
+          </Link>
+          <Link href="/signup" className="text-sm font-medium bg-white text-black hover:bg-zinc-200 transition-colors px-4 py-2 rounded-lg">
+            Sign up
+          </Link>
+        </div>
+      </nav>
+
+      <div className="py-12 px-4">
+        {/* Header */}
+        <div className="max-w-4xl mx-auto flex flex-col items-center text-center space-y-4 mb-12">
+          <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/20">
+            <Github className="w-7 h-7 text-white" />
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white mt-4">
+            Analyze <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-500">Public Git Profiles</span>
+          </h1>
+          <p className="text-lg text-zinc-400 max-w-2xl mx-auto">
+            Paste any public GitHub repository URL to understand its commits, architecture, and logic simply in seconds.
+          </p>
 
         <form onSubmit={fetchCommits} className="w-full max-w-xl mt-6 flex gap-2">
           <input
@@ -217,6 +239,7 @@ export default function Home() {
             </div>
           );
         })}
+      </div>
       </div>
     </main>
   );

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/utils/supabase/server";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -19,15 +20,36 @@ export async function GET(req: NextRequest) {
     const owner = pathParts[0];
     const repo = pathParts[1];
 
+    // Check for authenticated user and their GitHub token
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    let githubToken = null;
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('github_token')
+        .eq('id', user.id)
+        .single();
+      
+      if (profile?.github_token) {
+        githubToken = profile.github_token;
+      }
+    }
+
     // Fetch the last 15 commits to avoid massive payloads
     const apiUrl = `https://api.github.com/repos/${owner}/${repo}/commits?per_page=15`;
     
-    const response = await fetch(apiUrl, {
-      headers: {
-        "Accept": "application/vnd.github.v3+json",
-        "User-Agent": "GitSimple-App"
-      }
-    });
+    const headers: Record<string, string> = {
+      "Accept": "application/vnd.github.v3+json",
+      "User-Agent": "GitSimple-App"
+    };
+
+    if (githubToken) {
+      headers["Authorization"] = `Bearer ${githubToken}`;
+    }
+
+    const response = await fetch(apiUrl, { headers });
 
     if (!response.ok) {
       if (response.status === 404) return NextResponse.json({ error: "Repository not found or is private." }, { status: 404 });
