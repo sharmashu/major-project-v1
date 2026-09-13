@@ -10,13 +10,13 @@ function truncateDiff(diff: string) {
 
 export async function generateBriefSummary(diffText: string): Promise<string> {
   const truncatedDiff = truncateDiff(diffText);
-  const prompt = `Here are some code changes (a git diff).\n<diff>\n${truncatedDiff}\n</diff>\n\nWrite a brief explanation of these changes in 50-100 words. Explain what changed and why it matters. Keep it somewhat technical so a developer or product manager can understand the codebase impact, but avoid being overly verbose. Describe the changes directly.`;
+  const prompt = `Here are some code changes (a git diff).\n<diff>\n${truncatedDiff}\n</diff>\n\nWrite a very short, concise summary of these changes, strictly in the style of a git commit message. Do not explain in detail. Just state what was done. Use a neat format: a 1-sentence summary, followed by a short bulleted list of the exact technical changes (e.g., added X, modified Y function).`;
 
   try {
     const interaction = await client.interactions.create({
       model: "gemini-3.6-flash",
       input: prompt,
-      system_instruction: "You are a friendly communicator explaining software changes simply to non-technical people."
+      system_instruction: "You are a developer writing a clean, concise, technical git commit message. Use neat bullet points and formatting."
     });
     return interaction.output_text || "Could not generate brief summary.";
   } catch (error: any) {
@@ -27,13 +27,13 @@ export async function generateBriefSummary(diffText: string): Promise<string> {
 
 export async function generateDetailedExplanation(diffText: string): Promise<string> {
   const truncatedDiff = truncateDiff(diffText);
-  const prompt = `Here are some code changes (a git diff).\n<diff>\n${truncatedDiff}\n</diff>\n\nWrite a highly detailed but completely non-technical explanation of these changes. \nBreak it down into:\n1. The Core Idea (What happened)\n2. The Why (Why it was done)\n3. Real World Impact (How it affects the product)\nDo NOT use technical jargon (no 'variables', 'API', 'endpoints', 'DOM'). Use analogies extensively. Format neatly.`;
+  const prompt = `Here are some code changes (a git diff).\n<diff>\n${truncatedDiff}\n</diff>\n\nWrite a highly detailed technical breakdown of these changes formatted as a professional engineering report. \nUse clear, neat headings and bullet points with double line breaks for readability. \nInclude the following sections if present in the diff:\n- Architecture & Logic: Logical changes or refactoring\n- Functions & Interfaces: New functions, modified arguments, interfaces\n- Database & Schema: Schema modifications\n- Frontend & UI: Component changes, state management\nEnsure the format is extremely clean and easy to read.`;
 
   try {
     const interaction = await client.interactions.create({
       model: "gemini-3.6-flash",
       input: prompt,
-      system_instruction: "You are an expert communicator explaining complex software architecture to a non-technical CEO using simple analogies."
+      system_instruction: "You are an expert software architect providing comprehensive, neatly formatted, professional technical reports of codebase changes."
     });
     return interaction.output_text || "Could not generate detailed explanation.";
   } catch (error: any) {
@@ -45,8 +45,8 @@ export async function generateDetailedExplanation(diffText: string): Promise<str
 export async function chatWithCommit(diffText: string, userMessage: string, history: { role: string, content: string }[]): Promise<string> {
   const truncatedDiff = truncateDiff(diffText);
 
-  const systemPrompt = `You are a helpful Oracle answering questions about this specific code change. 
-Keep your answers extremely simple, warm, and non-technical. If they ask what a functionality does, explain it like a simple real-world concept. 
+  const systemPrompt = `You are an expert technical assistant answering questions about this specific code change and the broader project.
+Keep your answers precise and technical. Explain exactly what specific functions contribute to the project, interpret technical details in the commit, and provide clear, detailed technical answers even to vague questions.
 Here is the context diff:\n\n${truncatedDiff}`;
 
   try {
