@@ -1,14 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Loader2, Github, Sparkles, FileText, MessageSquare, ChevronDown, ChevronUp } from "lucide-react";
+import { createClient } from "@/utils/supabase/client";
 
-export default function Home() {
-  const [repoUrl, setRepoUrl] = useState("");
+function HomeContent() {
+  const searchParams = useSearchParams();
+  const initialRepo = searchParams.get("repo");
+
+  const [repoUrl, setRepoUrl] = useState(initialRepo || "");
   const [loading, setLoading] = useState(false);
   const [commits, setCommits] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
 
   // States for individual commits
   const [briefs, setBriefs] = useState<Record<string, { loading: boolean, text: string | null }>>({});
@@ -17,16 +23,15 @@ export default function Home() {
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
 
-  const fetchCommits = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!repoUrl) return;
+  const fetchCommitsData = async (url: string) => {
+    if (!url) return;
 
     setLoading(true);
     setError(null);
     setCommits([]);
 
     try {
-      const res = await fetch(`/api/commits?repo=${encodeURIComponent(repoUrl)}`);
+      const res = await fetch(`/api/commits?repo=${encodeURIComponent(url)}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to fetch commits");
 
@@ -38,6 +43,22 @@ export default function Home() {
     }
   };
 
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+    });
+
+    if (initialRepo) {
+      fetchCommitsData(initialRepo);
+    }
+  }, [initialRepo]);
+
+  const fetchCommits = async (e: React.FormEvent) => {
+    e.preventDefault();
+    fetchCommitsData(repoUrl);
+  };
+
   const getBriefExplanation = async (commit: any) => {
     if (briefs[commit.sha]) return; // already loaded or loading
 
@@ -47,7 +68,7 @@ export default function Home() {
       const res = await fetch("/api/explain/brief", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ diffUrl: commit.diffUrl })
+        body: JSON.stringify({ diffUrl: commit.diffUrl, repoUrl: repoUrl, sha: commit.sha })
       });
       const data = await res.json();
       setBriefs(prev => ({ ...prev, [commit.sha]: { loading: false, text: data.summary } }));
@@ -75,6 +96,8 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           diffUrl: commit.diffUrl,
+          repoUrl: repoUrl,
+          sha: commit.sha,
           userMessage: userMessage,
           history: history
         })
@@ -96,23 +119,6 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-zinc-300 font-sans selection:bg-purple-500/30">
-
-      {/* Top Navigation */}
-      <nav className="w-full flex justify-between items-center px-6 py-6 max-w-6xl mx-auto">
-        <div className="flex items-center gap-2">
-          <Github className="w-6 h-6 text-purple-500" />
-          <span className="text-lg font-bold text-white tracking-tight">GitSimple</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link href="/login" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors px-4 py-2">
-            Log in
-          </Link>
-          <Link href="/signup" className="text-sm font-medium bg-white text-black hover:bg-zinc-200 transition-colors px-4 py-2 rounded-lg">
-            Sign up
-          </Link>
-        </div>
-      </nav>
-
       <div className="py-12 px-4">
         {/* Header */}
         <div className="max-w-4xl mx-auto flex flex-col items-center text-center space-y-4 mb-12">
@@ -177,7 +183,7 @@ export default function Home() {
                 )}
 
                 <a
-                  href={`/api/explain/pdf?diffUrl=${encodeURIComponent(commit.diffUrl)}&repoUrl=${encodeURIComponent(repoUrl)}&sha=${commit.shortSha}`}
+                  href={`/api/explain/pdf?diffUrl=${encodeURIComponent(commit.diffUrl)}&repoUrl=${encodeURIComponent(repoUrl)}&sha=${commit.sha}`}
                   target="_blank"
                   className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20 rounded-lg text-sm transition-all"
                 >
@@ -242,5 +248,17 @@ export default function Home() {
       </div>
       </div>
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
   );
 }

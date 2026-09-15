@@ -14,7 +14,7 @@ export async function generateBriefSummary(diffText: string): Promise<string> {
 
   try {
     const interaction = await client.interactions.create({
-      model: "gemini-3.6-flash",
+      model: "gemini-1.5-flash-8b",
       input: prompt,
       system_instruction: "You are a developer writing a clean, concise, technical git commit message. Use neat bullet points and formatting."
     });
@@ -31,7 +31,7 @@ export async function generateDetailedExplanation(diffText: string): Promise<str
 
   try {
     const interaction = await client.interactions.create({
-      model: "gemini-3.6-flash",
+      model: "gemini-1.5-flash-8b",
       input: prompt,
       system_instruction: "You are an expert software architect providing comprehensive, neatly formatted, professional technical reports of codebase changes."
     });
@@ -64,7 +64,7 @@ Here is the context diff:\n\n${truncatedDiff}`;
     }
 
     const interaction = await client.interactions.create({
-      model: "gemini-3.6-flash",
+      model: "gemini-1.5-flash-8b",
       input: fullInput,
       system_instruction: systemPrompt
     });
@@ -75,3 +75,42 @@ Here is the context diff:\n\n${truncatedDiff}`;
     return "Error communicating with Oracle. Please check your Gemini API key.";
   }
 }
+
+export async function generateStructuredCommitAnalysis(diffText: string): Promise<any> {
+  const truncatedDiff = truncateDiff(diffText);
+  const prompt = `Analyze this git diff and return a JSON object with exactly these fields:
+{
+  "executive_summary": "string: a concise high-level summary of what was done",
+  "architectural_impact": "string: explanation of how this affects the system architecture, or 'None' if negligible",
+  "breaking_changes": ["string"],
+  "impact_level": "string (MUST BE exactly one of: Breaking, Feature, Refactor, Security, Performance, Fix)",
+  "affected_domains": ["string"]
+}
+
+Return ONLY valid JSON.
+
+Diff:
+${truncatedDiff}`;
+
+  try {
+    const interaction = await client.interactions.create({
+      model: "gemini-1.5-flash-8b",
+      input: prompt,
+      config: {
+        responseMimeType: "application/json"
+      }
+    });
+    
+    return JSON.parse(interaction.output_text || "{}");
+  } catch (error: any) {
+    console.error("Gemini Error generating structured analysis:", error);
+    return {
+      executive_summary: "Failed to generate summary.",
+      architectural_impact: "Unknown",
+      breaking_changes: [],
+      impact_level: "Fix",
+      affected_domains: []
+    };
+  }
+}
+

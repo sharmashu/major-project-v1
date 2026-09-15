@@ -1,18 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateBriefSummary } from "@/lib/AI Summarizer";
+import { getGithubTokenForRepo, fetchCommitDiff } from "@/lib/github";
 
 export async function POST(req: NextRequest) {
   try {
-    const { diffUrl } = await req.json();
+    const { diffUrl, repoUrl, sha } = await req.json();
 
-    if (!diffUrl) {
-      return NextResponse.json({ error: "Missing diffUrl" }, { status: 400 });
+    if (!diffUrl || !repoUrl || !sha) {
+      return NextResponse.json({ error: "Missing diffUrl, repoUrl, or sha" }, { status: 400 });
     }
 
-    const diffResponse = await fetch(diffUrl);
-    if (!diffResponse.ok) throw new Error("Failed to fetch diff");
-    
-    const diffText = await diffResponse.text();
+    let diffText = "";
+    try {
+      const token = await getGithubTokenForRepo(repoUrl);
+      diffText = await fetchCommitDiff(repoUrl, sha, token);
+    } catch (e) {
+      // Fallback to directly fetching diffUrl (for public repos if rate limited on API)
+      console.warn("API diff fetch failed, trying direct diffUrl fetch", e);
+      const diffResponse = await fetch(diffUrl);
+      if (!diffResponse.ok) throw new Error("Failed to fetch diff");
+      diffText = await diffResponse.text();
+    }
     if (!diffText.trim()) {
       return NextResponse.json({ summary: "This commit has no text changes." }, { status: 200 });
     }

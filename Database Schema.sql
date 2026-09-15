@@ -132,3 +132,19 @@ CREATE POLICY "Allow public read on knowledge_chunks" ON knowledge_chunks FOR SE
 CREATE POLICY "Allow service role insert on repositories" ON repositories FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow service role insert on commits" ON commits FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow service role insert on knowledge_chunks" ON knowledge_chunks FOR INSERT WITH CHECK (true);
+
+-- 9. User Repositories Table (Linking users to repositories)
+CREATE TABLE IF NOT EXISTS user_repositories (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    repository_id UUID NOT NULL REFERENCES repositories(id) ON DELETE CASCADE,
+    assigned_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, repository_id)
+);
+
+ALTER TABLE user_repositories ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read on user_repositories" ON user_repositories FOR SELECT USING (true);
+CREATE POLICY "Allow service role insert on user_repositories" ON user_repositories FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow service role update on user_repositories" ON user_repositories FOR UPDATE USING (true);
+CREATE POLICY "Allow service role delete on user_repositories" ON user_repositories FOR DELETE USING (true);

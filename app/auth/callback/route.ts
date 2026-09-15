@@ -9,14 +9,17 @@ export async function GET(request: Request) {
   if (code) {
     const supabase = createClient()
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-    
+
     if (!error && data?.session) {
       // If they logged in with GitHub, save the provider token to their profile
       // so we can access their private repositories later.
       const providerToken = data.session.provider_token;
-      
+
       if (providerToken) {
-        await supabase
+        const { createAdminClient } = await import('@/utils/supabase/server')
+        const adminAuthClient = createAdminClient()
+
+        await adminAuthClient
           .from('profiles')
           .update({ github_token: providerToken })
           .eq('id', data.session.user.id);

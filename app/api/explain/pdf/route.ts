@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateDetailedExplanation } from "@/lib/AI Summarizer";
 import { generateCommitPDF } from "@/lib/PDF Generator";
+import { getGithubTokenForRepo, fetchCommitDiff } from "@/lib/github";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -13,10 +14,16 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const diffResponse = await fetch(diffUrl);
-    if (!diffResponse.ok) throw new Error("Failed to fetch diff");
-    
-    const diffText = await diffResponse.text();
+    let diffText = "";
+    try {
+      const token = await getGithubTokenForRepo(repoUrl);
+      diffText = await fetchCommitDiff(repoUrl, sha, token);
+    } catch (e) {
+      console.warn("API diff fetch failed, trying direct diffUrl fetch", e);
+      const diffResponse = await fetch(diffUrl);
+      if (!diffResponse.ok) throw new Error("Failed to fetch diff");
+      diffText = await diffResponse.text();
+    }
     if (!diffText.trim()) {
       return NextResponse.json({ error: "Empty commit." }, { status: 400 });
     }
